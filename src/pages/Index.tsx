@@ -1,381 +1,396 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
 import Icon from "@/components/ui/icon";
+
+interface Room {
+  id: string;
+  code: string;
+  name: string;
+  players: Player[];
+  maxPlayers: number;
+  isStarted: boolean;
+  createdAt: Date;
+}
 
 interface Player {
   id: string;
   name: string;
-  isAlive: boolean;
-  joinedAt: Date;
   avatar: string;
-}
-
-interface GameState {
-  isStarted: boolean;
-  round: number;
-  timeLeft: number;
-  playersAlive: number;
-  totalPlayers: number;
+  isHost: boolean;
 }
 
 const Index = () => {
-  const [players, setPlayers] = useState<Player[]>([
-    {
-      id: "1",
-      name: "Александр",
-      isAlive: true,
-      joinedAt: new Date(),
-      avatar: "🧑‍💼",
-    },
-    {
-      id: "2",
-      name: "Мария",
-      isAlive: true,
-      joinedAt: new Date(),
-      avatar: "👩‍🔬",
-    },
-    {
-      id: "3",
-      name: "Дмитрий",
-      isAlive: true,
-      joinedAt: new Date(),
-      avatar: "🧑‍🎨",
-    },
-  ]);
+  const [currentView, setCurrentView] = useState<"menu" | "lobby">("menu");
+  const [playerName, setPlayerName] = useState("");
+  const [roomCode, setRoomCode] = useState("");
+  const [currentRoom, setCurrentRoom] = useState<Room | null>(null);
+  const [currentPlayer, setCurrentPlayer] = useState<Player | null>(null);
 
-  const [gameState, setGameState] = useState<GameState>({
-    isStarted: false,
-    round: 1,
-    timeLeft: 300,
-    playersAlive: 3,
-    totalPlayers: 3,
-  });
-
-  const [isAdmin, setIsAdmin] = useState(true);
-  const [newPlayerName, setNewPlayerName] = useState("");
-  const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
-
-  useEffect(() => {
-    if (gameState.isStarted && gameState.timeLeft > 0) {
-      const timer = setInterval(() => {
-        setGameState((prev) => ({ ...prev, timeLeft: prev.timeLeft - 1 }));
-      }, 1000);
-      return () => clearInterval(timer);
-    }
-  }, [gameState.isStarted, gameState.timeLeft]);
-
-  const addPlayer = () => {
-    if (!newPlayerName.trim()) return;
-
-    const avatars = ["🧑‍💼", "👩‍🔬", "🧑‍🎨", "👩‍💻", "🧑‍🚀", "👩‍⚕️", "🧑‍🔧", "👩‍🎓"];
-    const newPlayer: Player = {
-      id: Date.now().toString(),
-      name: newPlayerName,
-      isAlive: true,
-      joinedAt: new Date(),
-      avatar: avatars[Math.floor(Math.random() * avatars.length)],
-    };
-
-    setPlayers((prev) => [...prev, newPlayer]);
-    setGameState((prev) => ({
-      ...prev,
-      totalPlayers: prev.totalPlayers + 1,
-      playersAlive: prev.playersAlive + 1,
-    }));
-    setNewPlayerName("");
+  const generateRoomCode = () => {
+    return Math.random().toString(36).substring(2, 8).toUpperCase();
   };
 
-  const eliminatePlayer = (playerId: string) => {
-    setPlayers((prev) =>
-      prev.map((p) => (p.id === playerId ? { ...p, isAlive: false } : p)),
-    );
-    setGameState((prev) => ({ ...prev, playersAlive: prev.playersAlive - 1 }));
-    setSelectedPlayer(null);
+  const createRoom = () => {
+    if (!playerName.trim()) {
+      toast.error("Введите ваше имя");
+      return;
+    }
+
+    const code = generateRoomCode();
+    const playerId = Date.now().toString();
+
+    const player: Player = {
+      id: playerId,
+      name: playerName,
+      avatar: "🎮",
+      isHost: true,
+    };
+
+    const room: Room = {
+      id: Date.now().toString(),
+      code,
+      name: `Комната ${playerName}`,
+      players: [player],
+      maxPlayers: 8,
+      isStarted: false,
+      createdAt: new Date(),
+    };
+
+    setCurrentRoom(room);
+    setCurrentPlayer(player);
+    setCurrentView("lobby");
+    toast.success(`Комната создана! Код: ${code}`);
+  };
+
+  const joinRoom = () => {
+    if (!playerName.trim()) {
+      toast.error("Введите ваше имя");
+      return;
+    }
+    if (!roomCode.trim()) {
+      toast.error("Введите код комнаты");
+      return;
+    }
+
+    // Симуляция входа в комнату
+    const playerId = Date.now().toString();
+    const player: Player = {
+      id: playerId,
+      name: playerName,
+      avatar: "🎯",
+      isHost: false,
+    };
+
+    const room: Room = {
+      id: roomCode,
+      code: roomCode.toUpperCase(),
+      name: `Комната ${roomCode}`,
+      players: [{ id: "1", name: "Хост", avatar: "👑", isHost: true }, player],
+      maxPlayers: 8,
+      isStarted: false,
+      createdAt: new Date(),
+    };
+
+    setCurrentRoom(room);
+    setCurrentPlayer(player);
+    setCurrentView("lobby");
+    toast.success(`Подключились к комнате ${roomCode.toUpperCase()}`);
+  };
+
+  const leaveRoom = () => {
+    setCurrentRoom(null);
+    setCurrentPlayer(null);
+    setCurrentView("menu");
+    setRoomCode("");
+    toast.info("Вы покинули комнату");
+  };
+
+  const copyRoomCode = () => {
+    if (currentRoom) {
+      navigator.clipboard.writeText(currentRoom.code);
+      toast.success("Код скопирован!");
+    }
   };
 
   const startGame = () => {
-    setGameState((prev) => ({ ...prev, isStarted: true, timeLeft: 300 }));
+    if (currentRoom && currentPlayer?.isHost) {
+      toast.success("Игра начинается!");
+      // Здесь будет переход к игре
+    }
   };
 
-  const resetGame = () => {
-    setPlayers((prev) => prev.map((p) => ({ ...p, isAlive: true })));
-    setGameState({
-      isStarted: false,
-      round: 1,
-      timeLeft: 300,
-      playersAlive: players.length,
-      totalPlayers: players.length,
-    });
-  };
-
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, "0")}`;
-  };
-
-  const alivePlayers = players.filter((p) => p.isAlive);
-  const deadPlayers = players.filter((p) => !p.isAlive);
-
-  return (
-    <div className="min-h-screen bg-slate-900 text-white p-4">
-      <div className="max-w-6xl mx-auto">
-        {/* Заголовок */}
-        <div className="text-center mb-8">
-          <h1 className="text-5xl font-bold bg-gradient-to-r from-purple-400 to-pink-600 bg-clip-text text-transparent mb-4">
-            🔥 ИГРА НА ВЫЖИВАНИЕ
-          </h1>
-          <p className="text-xl text-slate-300">Последний выживший побеждает</p>
-        </div>
-
-        {/* Игровая статистика */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          <Card className="bg-slate-800 border-slate-700">
-            <CardContent className="pt-6">
-              <div className="text-center">
-                <div className="text-3xl font-bold text-green-400">
-                  {gameState.playersAlive}
-                </div>
-                <div className="text-sm text-slate-400">Выживших</div>
+  if (currentView === "lobby" && currentRoom) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 text-white p-4">
+        <div className="max-w-4xl mx-auto">
+          {/* Заголовок лобби */}
+          <div className="text-center mb-8">
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent mb-2">
+              🎮 Лобби игры
+            </h1>
+            <div className="flex items-center justify-center gap-4">
+              <div className="text-xl">
+                Код комнаты:{" "}
+                <span className="font-mono font-bold text-cyan-400">
+                  {currentRoom.code}
+                </span>
               </div>
-            </CardContent>
-          </Card>
+              <Button onClick={copyRoomCode} size="sm" variant="outline">
+                <Icon name="Copy" size={16} />
+              </Button>
+            </div>
+          </div>
 
-          <Card className="bg-slate-800 border-slate-700">
-            <CardContent className="pt-6">
-              <div className="text-center">
-                <div className="text-3xl font-bold text-red-400">
-                  {deadPlayers.length}
-                </div>
-                <div className="text-sm text-slate-400">Исключенных</div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-slate-800 border-slate-700">
-            <CardContent className="pt-6">
-              <div className="text-center">
-                <div className="text-3xl font-bold text-blue-400">
-                  {gameState.round}
-                </div>
-                <div className="text-sm text-slate-400">Раунд</div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-slate-800 border-slate-700">
-            <CardContent className="pt-6">
-              <div className="text-center">
-                <div className="text-3xl font-bold text-yellow-400">
-                  {gameState.isStarted
-                    ? formatTime(gameState.timeLeft)
-                    : "5:00"}
-                </div>
-                <div className="text-sm text-slate-400">Время раунда</div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Активные игроки */}
-          <div className="lg:col-span-2">
-            <Card className="bg-slate-800 border-slate-700">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Icon name="Users" size={24} />
-                  Активные игроки ({alivePlayers.length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {alivePlayers.map((player) => (
-                    <div
-                      key={player.id}
-                      className="flex items-center justify-between p-4 bg-slate-700 rounded-lg hover:bg-slate-600 transition-all animate-pulse"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="text-2xl">{player.avatar}</div>
-                        <div>
-                          <div className="font-semibold">{player.name}</div>
-                          <div className="text-sm text-slate-400">
-                            <Icon
-                              name="Clock"
-                              size={14}
-                              className="inline mr-1"
-                            />
-                            {player.joinedAt.toLocaleTimeString()}
-                          </div>
-                        </div>
-                      </div>
-                      {isAdmin && gameState.isStarted && (
-                        <Dialog>
-                          <DialogTrigger asChild>
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              onClick={() => setSelectedPlayer(player)}
-                            >
-                              <Icon name="X" size={16} />
-                            </Button>
-                          </DialogTrigger>
-                          <DialogContent className="bg-slate-800 border-slate-700">
-                            <DialogHeader>
-                              <DialogTitle className="text-red-400">
-                                Исключить игрока?
-                              </DialogTitle>
-                            </DialogHeader>
-                            <div className="py-4">
-                              <p className="text-slate-300">
-                                Вы уверены, что хотите исключить игрока{" "}
-                                <strong>{player.name}</strong>?
-                              </p>
-                            </div>
-                            <div className="flex gap-2 justify-end">
-                              <Button variant="outline">Отмена</Button>
-                              <Button
-                                variant="destructive"
-                                onClick={() => eliminatePlayer(player.id)}
-                              >
-                                Исключить
-                              </Button>
-                            </div>
-                          </DialogContent>
-                        </Dialog>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Исключенные игроки */}
-            {deadPlayers.length > 0 && (
-              <Card className="bg-slate-800 border-slate-700 mt-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Список игроков */}
+            <div className="lg:col-span-2">
+              <Card className="bg-black/20 border-purple-500/30 backdrop-blur-sm">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-red-400">
-                    <Icon name="Skull" size={24} />
-                    Исключенные игроки ({deadPlayers.length})
+                  <CardTitle className="flex items-center gap-2">
+                    <Icon name="Users" size={24} />
+                    Игроки ({currentRoom.players.length}/
+                    {currentRoom.maxPlayers})
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-2">
-                    {deadPlayers.map((player) => (
+                  <div className="space-y-3">
+                    {currentRoom.players.map((player) => (
                       <div
                         key={player.id}
-                        className="flex items-center gap-3 p-3 bg-red-900/20 rounded-lg opacity-60"
+                        className="flex items-center gap-3 p-3 bg-white/10 rounded-lg"
                       >
-                        <div className="text-xl grayscale">{player.avatar}</div>
-                        <div>
-                          <div className="font-medium line-through">
+                        <div className="text-2xl">{player.avatar}</div>
+                        <div className="flex-1">
+                          <div className="font-semibold flex items-center gap-2">
                             {player.name}
+                            {player.isHost && (
+                              <span className="text-yellow-400 text-sm">
+                                👑 Хост
+                              </span>
+                            )}
                           </div>
-                          <div className="text-sm text-red-400">Исключен</div>
+                          <div className="text-sm text-gray-300">
+                            {player.id === currentPlayer?.id
+                              ? "Это вы"
+                              : "Игрок"}
+                          </div>
                         </div>
+                      </div>
+                    ))}
+
+                    {/* Пустые слоты */}
+                    {Array.from({
+                      length:
+                        currentRoom.maxPlayers - currentRoom.players.length,
+                    }).map((_, i) => (
+                      <div
+                        key={i}
+                        className="flex items-center gap-3 p-3 bg-white/5 rounded-lg border-2 border-dashed border-gray-600"
+                      >
+                        <div className="text-2xl opacity-50">👤</div>
+                        <div className="text-gray-400">Ожидание игрока...</div>
                       </div>
                     ))}
                   </div>
                 </CardContent>
               </Card>
-            )}
-          </div>
+            </div>
 
-          {/* Панель управления */}
-          <div>
-            <Card className="bg-slate-800 border-slate-700">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Icon name="Settings" size={24} />
-                  {isAdmin ? "Панель админа" : "Панель игрока"}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Добавление игрока */}
-                <div>
-                  <label className="block text-sm font-medium mb-2">
-                    Добавить игрока
-                  </label>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={newPlayerName}
-                      onChange={(e) => setNewPlayerName(e.target.value)}
-                      placeholder="Имя игрока"
-                      className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white placeholder-slate-400"
-                      onKeyPress={(e) => e.key === "Enter" && addPlayer()}
-                    />
-                    <Button onClick={addPlayer} size="sm">
-                      <Icon name="Plus" size={16} />
-                    </Button>
-                  </div>
-                </div>
+            {/* Панель управления */}
+            <div>
+              <Card className="bg-black/20 border-purple-500/30 backdrop-blur-sm">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Icon name="Settings" size={24} />
+                    Управление
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {currentPlayer?.isHost ? (
+                    <>
+                      <Button
+                        onClick={startGame}
+                        className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700"
+                        disabled={currentRoom.players.length < 2}
+                      >
+                        <Icon name="Play" size={16} className="mr-2" />
+                        Начать игру
+                      </Button>
 
-                {/* Управление игрой */}
-                {isAdmin && (
-                  <div className="space-y-2">
-                    <Button
-                      onClick={startGame}
-                      disabled={gameState.isStarted || alivePlayers.length < 3}
-                      className="w-full"
-                      variant={gameState.isStarted ? "secondary" : "default"}
-                    >
-                      <Icon name="Play" size={16} className="mr-2" />
-                      {gameState.isStarted ? "Игра идет" : "Начать игру"}
-                    </Button>
-
-                    <Button
-                      onClick={resetGame}
-                      variant="outline"
-                      className="w-full"
-                    >
-                      <Icon name="RotateCcw" size={16} className="mr-2" />
-                      Сбросить игру
-                    </Button>
-
-                    <Button
-                      onClick={() => setIsAdmin(!isAdmin)}
-                      variant="ghost"
-                      className="w-full"
-                    >
-                      <Icon name="User" size={16} className="mr-2" />
-                      {isAdmin ? "Выйти из админки" : "Войти как админ"}
-                    </Button>
-                  </div>
-                )}
-
-                {/* Статус игры */}
-                <div className="pt-4 border-t border-slate-700">
-                  <div className="text-sm text-slate-400">
-                    Статус:{" "}
-                    {gameState.isStarted ? (
-                      <span className="text-green-400">Игра идет</span>
-                    ) : (
-                      <span className="text-yellow-400">Ожидание</span>
-                    )}
-                  </div>
-                  {alivePlayers.length < 3 && !gameState.isStarted && (
-                    <div className="text-sm text-red-400 mt-1">
-                      Минимум 3 игрока для старта
+                      {currentRoom.players.length < 2 && (
+                        <p className="text-sm text-yellow-400 text-center">
+                          Нужно минимум 2 игрока
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <div className="text-center text-gray-300">
+                      <Icon name="Clock" size={32} className="mx-auto mb-2" />
+                      <p>Ожидание начала игры...</p>
+                      <p className="text-sm">Хост начнет игру</p>
                     </div>
                   )}
-                  {alivePlayers.length === 1 && gameState.isStarted && (
-                    <div className="text-sm text-green-400 mt-1">
-                      🏆 Победитель: {alivePlayers[0].name}
+
+                  <Button
+                    onClick={leaveRoom}
+                    variant="destructive"
+                    className="w-full"
+                  >
+                    <Icon name="LogOut" size={16} className="mr-2" />
+                    Покинуть комнату
+                  </Button>
+
+                  <div className="pt-4 border-t border-gray-600">
+                    <div className="text-sm text-gray-400">
+                      <div>
+                        Создана: {currentRoom.createdAt.toLocaleTimeString()}
+                      </div>
+                      <div>
+                        Статус: <span className="text-green-400">Ожидание</span>
+                      </div>
                     </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </div>
         </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 text-white p-4">
+      <div className="max-w-4xl mx-auto">
+        {/* Заголовок */}
+        <div className="text-center mb-12">
+          <h1 className="text-6xl font-bold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent mb-4">
+            🎮 GameHub
+          </h1>
+          <p className="text-xl text-gray-300">
+            Играйте с друзьями онлайн по коду приглашения
+          </p>
+        </div>
+
+        {/* Основные действия */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+          {/* Создать комнату */}
+          <Card className="bg-black/20 border-purple-500/30 backdrop-blur-sm hover:border-purple-400/50 transition-all">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-2xl">
+                <Icon name="Plus" size={28} />
+                Создать комнату
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Ваше имя
+                </label>
+                <Input
+                  value={playerName}
+                  onChange={(e) => setPlayerName(e.target.value)}
+                  placeholder="Введите ваше имя"
+                  className="bg-white/10 border-gray-600 text-white placeholder-gray-400"
+                  onKeyPress={(e) => e.key === "Enter" && createRoom()}
+                />
+              </div>
+
+              <Button
+                onClick={createRoom}
+                className="w-full bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-lg py-6"
+              >
+                <Icon name="Gamepad2" size={20} className="mr-2" />
+                Создать и начать
+              </Button>
+
+              <p className="text-sm text-gray-400 text-center">
+                Создайте комнату и получите код для друзей
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Присоединиться */}
+          <Card className="bg-black/20 border-cyan-500/30 backdrop-blur-sm hover:border-cyan-400/50 transition-all">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-2xl">
+                <Icon name="Users" size={28} />
+                Присоединиться
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Ваше имя
+                </label>
+                <Input
+                  value={playerName}
+                  onChange={(e) => setPlayerName(e.target.value)}
+                  placeholder="Введите ваше имя"
+                  className="bg-white/10 border-gray-600 text-white placeholder-gray-400"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Код комнаты
+                </label>
+                <Input
+                  value={roomCode}
+                  onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
+                  placeholder="Введите код"
+                  className="bg-white/10 border-gray-600 text-white placeholder-gray-400 font-mono text-center"
+                  maxLength={6}
+                  onKeyPress={(e) => e.key === "Enter" && joinRoom()}
+                />
+              </div>
+
+              <Button
+                onClick={joinRoom}
+                className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-lg py-6"
+              >
+                <Icon name="LogIn" size={20} className="mr-2" />
+                Подключиться
+              </Button>
+
+              <p className="text-sm text-gray-400 text-center">
+                Введите код от друга для входа в игру
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Популярные игры */}
+        <Card className="bg-black/20 border-gray-600/30 backdrop-blur-sm">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Icon name="Trophy" size={24} />
+              Доступные игры
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="p-4 bg-white/10 rounded-lg text-center">
+                <div className="text-3xl mb-2">🔥</div>
+                <div className="font-semibold">Выживание</div>
+                <div className="text-sm text-gray-400">Битва до последнего</div>
+              </div>
+              <div className="p-4 bg-white/10 rounded-lg text-center opacity-60">
+                <div className="text-3xl mb-2">🎯</div>
+                <div className="font-semibold">Викторина</div>
+                <div className="text-sm text-gray-400">Скоро...</div>
+              </div>
+              <div className="p-4 bg-white/10 rounded-lg text-center opacity-60">
+                <div className="text-3xl mb-2">🎲</div>
+                <div className="font-semibold">Мафия</div>
+                <div className="text-sm text-gray-400">Скоро...</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
