@@ -52,7 +52,7 @@ const Index = () => {
     const room: Room = {
       id: Date.now().toString(),
       code,
-      name: `Комната ${playerName}`,
+      name: `Подвал ${playerName}`,
       players: [player],
       maxPlayers: 8,
       isStarted: false,
@@ -128,13 +128,13 @@ const Index = () => {
         <div className="max-w-4xl mx-auto">
           {/* Заголовок лобби */}
           <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent mb-2">
-              🎮 Лобби игры
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-orange-400 to-red-500 bg-clip-text text-transparent mb-2">
+              🏠 Подвал Гикоса - Лобби
             </h1>
             <div className="flex items-center justify-center gap-4">
               <div className="text-xl">
-                Код комнаты:{" "}
-                <span className="font-mono font-bold text-cyan-400">
+                Код подвала:{" "}
+                <span className="font-mono font-bold text-orange-400">
                   {currentRoom.code}
                 </span>
               </div>
@@ -267,11 +267,11 @@ const Index = () => {
       <div className="max-w-4xl mx-auto">
         {/* Заголовок */}
         <div className="text-center mb-12">
-          <h1 className="text-6xl font-bold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent mb-4">
-            🎮 GameHub
+          <h1 className="text-6xl font-bold bg-gradient-to-r from-orange-400 to-red-500 bg-clip-text text-transparent mb-4">
+            🏠 Подвал Гикоса
           </h1>
           <p className="text-xl text-gray-300">
-            Играйте с друзьями онлайн по коду приглашения
+            Тайное место для дружеских игр и общения по кодам приглашения
           </p>
         </div>
 
